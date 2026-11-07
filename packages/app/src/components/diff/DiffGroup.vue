@@ -6,13 +6,12 @@ import ActionIconButton from '@antfu/design/components/Action/ActionIconButton.v
 import DisplayDonut from '@antfu/design/components/Display/DisplayDonut.vue'
 import { Markdown } from '@comark/vue'
 import { computed, nextTick, ref } from 'vue'
-import { scrollToFile } from '../../composables/scrollToFile'
+import { scrollToElement, scrollToFile, scrollToId } from '../../composables/scrollToFile'
 import { useDragResize } from '../../composables/useDragResize'
 import { useFitText } from '../../composables/useFitText'
 import { fileListLayout } from '../../state/file-list'
 import { GROUP_ASIDE_MAX_RATIO, GROUP_ASIDE_MIN_WIDTH, groupAsideWidth } from '../../state/group-aside'
 import { showGroupSidebar } from '../../state/group-nav'
-import { scrollBehavior } from '../../state/smooth-scroll'
 import CriticalMark from './CriticalMark.vue'
 import DiffGroup from './DiffGroup.vue'
 import DiffGroupNav from './DiffGroupNav.vue'
@@ -74,12 +73,14 @@ function setChildEl(key: string, instance: ComponentPublicInstance | null) {
     childEls.delete(key)
 }
 function scrollToChild(key: string) {
-  childEls.get(key)?.scrollIntoView({ behavior: scrollBehavior.value, block: 'start' })
+  const child = childEls.get(key)
+  if (child)
+    scrollToElement(props.document ?? document, child)
 }
 
 function navigateToParent() {
   if (props.parentKey)
-    (props.document ?? document).getElementById(`group-${props.parentKey}`)?.scrollIntoView({ behavior: scrollBehavior.value, block: 'start' })
+    scrollToId(props.document ?? document, `group-${props.parentKey}`)
 }
 
 const progress = computed(() => totalFiles.value === 0 ? 1 : reviewedCount.value / totalFiles.value)

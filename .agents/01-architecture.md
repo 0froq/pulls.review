@@ -392,6 +392,20 @@ land later without a rewrite:
   and a sticky left sidebar tree (`DiffGroupSidebar`, subgroups nested under
   their parent). The sidebar only applies at `lg` and up; narrower viewports
   always get the tabs. Persisted like the diff layout (`state/group-nav.ts`).
+- Every jump to a group or file (tabs, sidebar, sub-nav, file tree) goes
+  through `composables/scrollToFile.ts`, which animates the scroller itself,
+  one `requestAnimationFrame` at a time. A native smooth scroll cannot survive
+  here: the virtualizer re-measures the files above the target as they scroll
+  in and answers each height change with an instant `scrollTo`, which cancels
+  the animation part-way and leaves the target wherever the interruption
+  landed. Re-reading the target every frame costs such a correction a frame
+  instead of the jump. The scroll-margin is part of that per-frame read: it
+  resolves `--diffs-header-height`, which the page changes mid-jump - a
+  chapter's subgroups row makes the header taller, and below `lg` the header
+  slides away and the margin collapses to 0. The flight ends when a frame
+  finds the target already at its scroll-margin, or when the user touches the
+  scroller. `FileDiff.vue`'s instant pin for a collapsing file is the one jump
+  that does not go through it.
 - At `lg` and up the sidebar and each group's aside (title, summary, file tree)
   are drag-resizable (`composables/useDragResize.ts`); a double-click on the
   handle restores the default. One aside width is shared by every group, so

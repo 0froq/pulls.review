@@ -11,11 +11,11 @@ import mermaid from '@comark/vue/plugins/mermaid'
 import { Virtualizer } from '@pierre/diffs'
 import { useElementBounding, useElementSize, useEventListener } from '@vueuse/core'
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, reactive, ref, useId, useTemplateRef, watch } from 'vue'
+import { scrollToId } from '../../composables/scrollToFile'
 import { useDragResize } from '../../composables/useDragResize'
 import { autoRefresh } from '../../state/auto-refresh'
 import { CHAT_PANEL_DOCK_MIN_WIDTH } from '../../state/chat-panel'
 import { GROUP_SIDEBAR_MAX_RATIO, GROUP_SIDEBAR_MIN_WIDTH, groupSidebarWidth, isWide, showGroupSidebar } from '../../state/group-nav'
-import { scrollBehavior } from '../../state/smooth-scroll'
 import { chatDraftKey } from '../chat/chat-quotes'
 import GithubTokenRecovery from '../settings/GithubTokenRecovery.vue'
 import { diffVirtualizerKey } from './diff-virtualizer'
@@ -158,12 +158,12 @@ watch([groups, headerOffset], () => nextTick(() => {
 }), { immediate: true })
 
 function scrollToGroup(key: string) {
-  (props.document ?? document).getElementById(`group-${key}`)?.scrollIntoView({ behavior: scrollBehavior.value, block: 'start' })
+  scrollToId(props.document ?? document, `group-${key}`)
 }
 
 function selectDescription() {
   descriptionOpen.value = true
-  ;(props.document ?? document).getElementById(descriptionId)?.scrollIntoView({ behavior: scrollBehavior.value, block: 'start' })
+  scrollToId(props.document ?? document, descriptionId)
 }
 
 // Once dragged, the sidebar takes that width over its default `w-64` - capped, so the

@@ -1,13 +1,23 @@
 import type { DiffsPayload, GroupedResult } from '@pulls.review/core/types'
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { defineComponent, h, ref } from 'vue'
+import { defineComponent, h, nextTick, ref } from 'vue'
 import nestedGroups from '../../../test/fixtures/synthetic/nested-groups.json'
 import partiallyReviewed from '../../../test/fixtures/synthetic/partially-reviewed.json'
+import { scrollToElement, scrollToFile, scrollToId } from '../../composables/scrollToFile'
 import { i18n } from '../../i18n'
 import { createMockDiffsStore } from '../../stores/mock-diffs-store'
 import DiffGroup from './DiffGroup.vue'
+import DiffGroupNav from './DiffGroupNav.vue'
 import FileTree from './FileTree.vue'
+
+// The jump itself is `scrollToFile`'s contract; these tests only pin which root
+// and which target each navigation hands to it, so no animation runs here.
+vi.mock('../../composables/scrollToFile', () => ({
+  scrollToElement: vi.fn(),
+  scrollToFile: vi.fn(),
+  scrollToId: vi.fn(),
+}))
 
 const wrappers: ReturnType<typeof mount>[] = []
 
@@ -26,6 +36,7 @@ const FileDiffStub = defineComponent({
 
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount())
+  vi.clearAllMocks()
   document.body.innerHTML = ''
 })
 
@@ -48,45 +59,42 @@ function mountGroup(embedded: boolean, nested = false) {
 }
 
 describe('diffGroup navigation', () => {
-  it.each([false, true])('expands and locates the file in its own root (embedded=%s)', async (embedded) => {
+  it.each([false, true])('expands the file and jumps to it in its own root (embedded=%s)', async (embedded) => {
     const { root, wrapper, group } = mountGroup(embedded)
     const file = group.files[0]!
-    const marker = root.querySelector<HTMLElement>(`[data-file-start="${file.sha}"]`)!
-    const scroll = vi.fn()
-    marker.scrollIntoView = scroll
-    // Place the target below the viewport so navigating must scroll it.
-    marker.style.scrollMarginTop = '0px'
-    marker.getBoundingClientRect = () => new DOMRect(0, 500, 100, 0)
-    const outside = document.createElement('div')
-    outside.dataset.fileStart = file.sha
-    outside.scrollIntoView = vi.fn()
-    if (embedded)
-      document.body.prepend(outside)
 
     wrapper.findComponent(FileTree).vm.$emit('navigate', file.sha)
-    await wrapper.vm.$nextTick()
-    await wrapper.vm.$nextTick()
+    await nextTick()
+    await nextTick()
 
     expect(wrapper.find('[data-expanded="true"]').exists()).toBe(true)
-    expect(scroll).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
-    expect(outside.scrollIntoView).not.toHaveBeenCalled()
-    marker.getBoundingClientRect = () => new DOMRect()
-    root.dispatchEvent(new Event('scrollend'))
+    expect(scrollToFile).toHaveBeenCalledWith(root, file.sha)
   })
 
-  it('returns from a nested group to its parent inside the ShadowRoot', async () => {
+  it('jumps to a subgroup element rather than an id the document may also carry', async () => {
     const { root, wrapper, group } = mountGroup(true, true)
-    const parent = root.getElementById(`group-${group.key}`)!
-    parent.scrollIntoView = vi.fn()
+    const child = group.children[0]!
+    const childEl = root.getElementById(`group-${child.key}`)!
     const outside = document.createElement('div')
-    outside.id = parent.id
-    outside.scrollIntoView = vi.fn()
+    outside.id = childEl.id
+    document.body.prepend(outside)
+
+    wrapper.findComponent(DiffGroupNav).vm.$emit('select', child.key)
+    await nextTick()
+
+    expect(scrollToElement).toHaveBeenCalledWith(root, childEl)
+    expect(scrollToId).not.toHaveBeenCalled()
+  })
+
+  it('returns from a subgroup to its parent inside the ShadowRoot', async () => {
+    const { root, wrapper, group } = mountGroup(true, true)
+    const outside = document.createElement('div')
+    outside.id = `group-${group.key}`
     document.body.prepend(outside)
 
     const back = wrapper.findAll('button').find(button => button.text() === `${group.label} ›`)!
     await back.trigger('click')
 
-    expect(parent.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
-    expect(outside.scrollIntoView).not.toHaveBeenCalled()
+    expect(scrollToId).toHaveBeenCalledWith(root, `group-${group.key}`)
   })
 })

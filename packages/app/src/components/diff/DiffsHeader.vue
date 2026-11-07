@@ -8,9 +8,9 @@ import { ACTIONS_BOT_LOGIN } from '@pulls.review/core/github'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
+import { scrollToId } from '../../composables/scrollToFile'
 import { parentForRef } from '../../source-routes'
 import { showGroupSidebar } from '../../state/group-nav'
-import { scrollBehavior } from '../../state/smooth-scroll'
 import GithubAvatar from '../GithubAvatar.vue'
 import NavControls from '../NavControls.vue'
 import DiffAnalyzeButton from './DiffAnalyzeButton.vue'
@@ -69,7 +69,7 @@ const authorUrl = computed(() => {
 const reviews = computed(() => props.store.reviews)
 
 function scrollToGroup(key: string) {
-  (props.document ?? document).getElementById(`group-${key}`)?.scrollIntoView({ behavior: scrollBehavior.value, block: 'start' })
+  scrollToId(props.document ?? document, `group-${key}`)
 }
 </script>
 
